@@ -51,6 +51,22 @@ print(decision.effective_spend_limit)  # 100.0  -- tier caps at $100
 print(decision.trust_tier)        # "standard"
 ```
 
+### AgentMesh protocol integration
+
+For use with `PolicyEngine.set_authority_resolver()`:
+
+```python
+from agentmesh_reputation_gate import AuthorityResolver, AuthorityRequest
+
+resolver = AuthorityResolver()
+
+# Single-arg form matching AgentMesh protocol
+request = AuthorityRequest(delegation=d, trust=t, action=a)
+decision = resolver.resolve(request)
+```
+
+Both calling conventions produce identical results.
+
 ## 6 Invariants
 
 Every resolution enforces these properties:
@@ -89,7 +105,7 @@ Custom tiers: pass your own `list[TierDefinition]` to `AuthorityResolver(tiers=.
 - `read:*` -- single-level wildcard (covers `read:data`, not `read:data:sensitive`)
 - `read:**` -- recursive wildcard (covers any depth)
 - `admin:*` does NOT imply `read:*` (no implicit inheritance)
-- Explicit deny always wins
+- Intersection always produces the narrower bound
 
 ## Tests
 
@@ -97,7 +113,7 @@ Custom tiers: pass your own `list[TierDefinition]` to `AuthorityResolver(tiers=.
 PYTHONPATH=src python3 -m pytest tests/ -v
 ```
 
-55 tests covering all 6 invariants, capability matching, tier resolution, wildcard intersection, agent identity checks, lineage bound enforcement, and adversarial inputs.
+62 tests covering all 6 invariants, capability matching, tier resolution, wildcard intersection, agent identity checks, lineage bound enforcement, adversarial inputs, and AgentMesh protocol compatibility.
 
 ## References
 
