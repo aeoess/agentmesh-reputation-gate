@@ -11,7 +11,7 @@ lineage bound enforcement, and empty tiers.
 from typing import Optional
 import pytest
 from agentmesh_reputation_gate import (
-    AuthorityResolver, DelegationInfo, TrustInfo, ActionRequest,
+    AuthorityResolver, DelegationInfo, TrustInfo, ActionRequest, AuthorityRequest,
     Decision, capability_matches, intersect_capabilities,
     score_to_tier, lineage_bound_score, DEFAULT_TIERS,
 )
@@ -427,3 +427,73 @@ class TestEmptyTiersConfig:
         d = make_delegation(capabilities=["read:data"])
         decision = resolver.resolve(d, make_trust(500), make_action("read:data"))
         assert decision.decision == Decision.ALLOW
+
+
+# ══════════════════════════════════════════════════════════════
+# AuthorityRequest wrapper (AgentMesh protocol compat)
+# ══════════════════════════════════════════════════════════════
+
+class TestAuthorityRequestWrapper:
+    def test_single_arg_resolve_matches_three_arg(self):
+        resolver = AuthorityResolver()
+        d = make_delegation(capabilities=["read:data"])
+        t = make_trust(500)
+        a = make_action("read:data")
+
+        three_arg = resolver.resolve(d, t, a)
+
+        request = AuthorityRequest(delegation=d, trust=t, action=a)
+        one_arg = resolver.resolve(request)
+
+        assert three_arg.decision == one_arg.decision
+        assert three_arg.effective_scope == one_arg.effective_scope
+        assert three_arg.trust_tier == one_arg.trust_tier
+
+    def test_single_arg_deny_on_revoked(self):
+        resolver = AuthorityResolver()
+        d = make_delegation(capabilities=["read:data"])
+        d.is_revoked = True
+        request = AuthorityRequest(
+            delegation=d, trust=make_trust(500), action=make_action("read:data")
+        )
+        assert resolver.resolve(request).decision == Decision.DENY
+
+    def test_single_arg_agent_id_mismatch(self):
+        resolver = AuthorityResolver()
+        request = AuthorityRequest(
+            delegation=make_delegation(capabilities=["read:data"]),
+            trust=TrustInfo(agent_id="different-bot", score=500),
+            action=make_action("read:data"),
+        )
+        assert resolver.resolve(request).decision == Decision.DENY
+
+    def test_single_arg_spend_narrowing(self):
+        resolver = AuthorityResolver()
+        request = AuthorityRequest(
+            delegation=make_delegation(capabilities=["read:data"], spend_limit=1000.0),
+            trust=make_trust(500),
+            action=make_action("read:data", spend=500.0),
+        )
+        decision = resolver.resolve(request)
+        assert decision.decision == Decision.ALLOW_NARROWED
+
+    def test_missing_args_raises(self):
+        resolver = AuthorityResolver()
+        d = make_delegation(capabilities=["read:data"])
+        with pytest.raises(ValueError, match="requires either"):
+            resolver.resolve(d)  # missing trust and action
+
+    def test_missing_action_raises(self):
+        resolver = AuthorityResolver()
+        d = make_delegation(capabilities=["read:data"])
+        t = make_trust(500)
+        with pytest.raises(ValueError, match="requires either"):
+            resolver.resolve(d, t)  # missing action
+
+    def test_authority_request_is_frozen(self):
+        d = make_delegation(capabilities=["read:data"])
+        request = AuthorityRequest(
+            delegation=d, trust=make_trust(500), action=make_action("read:data")
+        )
+        with pytest.raises(AttributeError):
+            request.action = make_action("write:data")  # type: ignore

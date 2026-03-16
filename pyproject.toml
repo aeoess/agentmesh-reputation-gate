@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentmesh-reputation-gate"
-version = "0.1.0"
+version = "0.2.0"
 description = "Reputation-gated authority resolver for AgentMesh. Composes trust scoring with delegation chains via monotonic narrowing."
 readme = "README.md"
 license = {text = "MIT"}

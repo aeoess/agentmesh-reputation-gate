@@ -86,3 +86,17 @@ class TrustInfo:
     agent_id: str
     score: float  # 0-1000 for AgentMesh, mapped internally
     tier_name: str = ""
+
+
+@dataclass(frozen=True)
+class AuthorityRequest:
+    """
+    Bundled request matching AgentMesh's PolicyEngine.set_authority_resolver() protocol.
+
+    This wrapper exists so that resolve() can accept either:
+      - resolve(delegation, trust, action)   # our original 3-arg API
+      - resolve(request)                     # AgentMesh protocol API
+    """
+    delegation: DelegationInfo
+    trust: TrustInfo
+    action: ActionRequest

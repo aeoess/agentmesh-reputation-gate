@@ -23,7 +23,7 @@ of delegated capabilities and trust-tier permissions.
     assert decision.decision.value == "allow"
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from .resolver import AuthorityResolver
 from .types import (
@@ -32,6 +32,7 @@ from .types import (
     EnforcementMode,
     TierDefinition,
     ActionRequest,
+    AuthorityRequest,
     DelegationInfo,
     TrustInfo,
 )
@@ -49,6 +50,7 @@ from .tiers import (
 __all__ = [
     "AuthorityResolver",
     "AuthorityDecision",
+    "AuthorityRequest",
     "Decision",
     "EnforcementMode",
     "TierDefinition",

@@ -12,7 +12,7 @@ resolve_authority() in Agent Passport System.
 from __future__ import annotations
 from .types import (
     AuthorityDecision, Decision, ActionRequest,
-    DelegationInfo, TrustInfo, TierDefinition,
+    DelegationInfo, TrustInfo, TierDefinition, AuthorityRequest,
 )
 from .capabilities import intersect_capabilities, action_authorized
 from .tiers import score_to_tier, lineage_bound_score, DEFAULT_TIERS
@@ -41,13 +41,17 @@ class AuthorityResolver:
 
     def resolve(
         self,
-        delegation: DelegationInfo,
-        trust: TrustInfo,
-        action: ActionRequest,
+        delegation_or_request: DelegationInfo | AuthorityRequest,
+        trust: TrustInfo | None = None,
+        action: ActionRequest | None = None,
     ) -> AuthorityDecision:
         """
         Compute effective authority by composing delegation scope
         with trust-tier limits, component-wise.
+
+        Supports two calling conventions:
+          resolver.resolve(delegation, trust, action)   # 3-arg (original)
+          resolver.resolve(AuthorityRequest(...))        # 1-arg (AgentMesh protocol)
 
         Invariant 1: No widening -- result never exceeds delegation
         Invariant 2: Trust monotonicity -- lower score never increases authority
@@ -56,6 +60,15 @@ class AuthorityResolver:
         Invariant 5: Deterministic -- same inputs = same output
         Invariant 6: Lineage bound -- child trust <= parent trust
         """
+        # Unpack AuthorityRequest if single-arg form is used
+        if isinstance(delegation_or_request, AuthorityRequest):
+            delegation = delegation_or_request.delegation
+            trust = delegation_or_request.trust
+            action = delegation_or_request.action
+        else:
+            delegation = delegation_or_request
+            if trust is None or action is None:
+                raise ValueError("resolve() requires either AuthorityRequest or (DelegationInfo, TrustInfo, ActionRequest)")
         # Step 0: Agent identity consistency check
         if delegation.agent_id != trust.agent_id:
             return AuthorityDecision(
