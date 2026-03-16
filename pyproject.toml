@@ -28,3 +28,6 @@ Issues = "https://github.com/aeoess/agentmesh-reputation-gate/issues"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

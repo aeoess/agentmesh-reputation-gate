@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional, Tuple
 
 
 class Decision(str, Enum):
@@ -64,7 +64,7 @@ class ActionRequest:
     agent_id: str
     action: str
     requested_spend: Optional[float] = None
-    context: Optional[dict] = None
+    context: Optional[Tuple[Tuple[str, Any], ...]] = None  # Immutable key-value pairs
 
 
 @dataclass

@@ -13,6 +13,17 @@ Rules from the ADR:
 from __future__ import annotations
 
 
+def _is_valid_capability(cap: str) -> bool:
+    """
+    Validate capability format: must be namespace:action with no empty segments.
+    Wildcards (read:*, read:**) are valid patterns but bare * or empty string are not.
+    """
+    if not cap or ":" not in cap:
+        return False
+    parts = cap.split(":", 1)
+    return len(parts[0]) > 0 and len(parts[1]) > 0
+
+
 def capability_matches(pattern: str, capability: str) -> bool:
     """
     Check if a capability pattern covers a specific capability.
@@ -21,7 +32,21 @@ def capability_matches(pattern: str, capability: str) -> bool:
       "read:data"    -- exact match only
       "read:*"       -- matches read:<one-segment> (not nested)
       "read:**"      -- matches read:<anything, any depth>
+
+    Returns False for malformed inputs (no colon, empty segments, bare wildcards).
+    Security principle: invalid capabilities fail closed.
     """
+    # Reject malformed inputs -- fail closed
+    if not pattern or not capability:
+        return False
+    if ":" not in pattern or ":" not in capability:
+        # Bare wildcards like "*" and bare tokens like "admin" are not valid
+        return False
+    # Reject empty namespace or empty action (":foo", "foo:", ":")
+    p_ns, _, p_rest = pattern.partition(":")
+    c_ns, _, c_rest = capability.partition(":")
+    if not p_ns or not p_rest or not c_ns or not c_rest:
+        return False
     if pattern == capability:
         return True
 

@@ -283,3 +283,78 @@ class TestFullResolution:
         d = make_delegation(capabilities=["read:data"])
         decision = resolver.resolve(d, make_trust(450), make_action("read:data"))
         assert decision.trust_score == 450
+
+
+
+# ══════════════════════════════════════════════════════════════
+# Adversarial / Edge Case Tests
+# (Added after GPT hostile review)
+# ══════════════════════════════════════════════════════════════
+
+class TestMalformedCapabilities:
+    """Malformed inputs must fail closed -- never silently grant access."""
+
+    def test_bare_wildcard_matches_nothing(self):
+        """Bare '*' is not a valid capability and matches nothing."""
+        assert capability_matches("*", "read:data") is False
+        assert capability_matches("read:data", "*") is False
+
+    def test_empty_string_matches_nothing(self):
+        assert capability_matches("", "read:data") is False
+        assert capability_matches("read:data", "") is False
+        assert capability_matches("", "") is False
+
+    def test_no_colon_matches_nothing(self):
+        """Capabilities without namespace:action format are rejected."""
+        assert capability_matches("admin", "admin") is False
+        assert capability_matches("readlogs", "readlogs") is False
+
+    def test_colon_star_no_prefix_matches_nothing(self):
+        """:* with no namespace prefix is rejected (no colon in pattern prefix)."""
+        # ":*" has ":" not in pattern[:-2] which is "" -- but our new
+        # validation catches ":" not in capability for bare tokens
+        assert capability_matches(":*", "read:data") is False
+
+    def test_bare_wildcard_delegation_blackholes_safely(self):
+        """Delegation with bare '*' produces empty scope (fail closed)."""
+        result = intersect_capabilities(
+            ["*"],
+            frozenset({"read:*", "write:own"}),
+        )
+        assert result == ()
+
+    def test_null_byte_in_capability(self):
+        """Null bytes don't cause special behavior."""
+        assert capability_matches("read:*", "read:\x00logs") is True  # valid single segment
+        assert capability_matches("read:*", "read:lo\x00gs") is True
+
+    def test_colon_only(self):
+        """Single colon is malformed."""
+        assert capability_matches(":", ":") is False
+
+    def test_action_with_no_colon_denied(self):
+        """Action without namespace format is always denied."""
+        resolver = AuthorityResolver()
+        d = make_delegation(capabilities=["read:data"])
+        decision = resolver.resolve(d, make_trust(1000), make_action("readdata"))
+        assert decision.decision == Decision.DENY
+
+
+class TestActionRequestImmutability:
+    """ActionRequest with frozen=True and immutable context."""
+
+    def test_hashable_without_context(self):
+        a = ActionRequest(agent_id="bot-1", action="read:data")
+        hash(a)  # Should not raise
+
+    def test_hashable_with_tuple_context(self):
+        a = ActionRequest(
+            agent_id="bot-1", action="read:data",
+            context=(("env", "prod"), ("region", "us-east")),
+        )
+        hash(a)  # Should not raise
+
+    def test_frozen_prevents_mutation(self):
+        a = ActionRequest(agent_id="bot-1", action="read:data")
+        with pytest.raises(AttributeError):
+            a.action = "write:data"  # type: ignore
