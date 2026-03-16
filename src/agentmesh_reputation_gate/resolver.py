@@ -96,8 +96,6 @@ class AuthorityResolver:
             and action.requested_spend > effective_spend
         )
 
-        scope_narrowed = len(effective_scope) < len(delegation.capabilities)
-
         if spend_narrowed:
             # Action is allowed but spend was capped
             return AuthorityDecision(

@@ -11,7 +11,6 @@ Rules from the ADR:
 """
 
 from __future__ import annotations
-import fnmatch
 
 
 def capability_matches(pattern: str, capability: str) -> bool:
