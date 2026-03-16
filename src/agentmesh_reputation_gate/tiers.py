@@ -70,7 +70,9 @@ def score_to_tier(
     AgentMesh scores are 0-1000. We find the tier whose range
     contains the score. Falls back to the lowest tier if no match.
     """
-    tiers = tiers or DEFAULT_TIERS
+    tiers = tiers if tiers is not None else DEFAULT_TIERS
+    if not tiers:
+        raise ValueError("tiers must not be empty")
     # Sort descending by score_min so we find highest qualifying first
     for tier in sorted(tiers, key=lambda t: t.score_min, reverse=True):
         if tier.score_min <= score <= tier.score_max:

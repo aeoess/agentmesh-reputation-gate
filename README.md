@@ -97,7 +97,7 @@ Custom tiers: pass your own `list[TierDefinition]` to `AuthorityResolver(tiers=.
 PYTHONPATH=src python3 -m pytest tests/ -v
 ```
 
-31 tests covering all 6 invariants, capability matching, tier resolution, and integration scenarios.
+55 tests covering all 6 invariants, capability matching, tier resolution, wildcard intersection, agent identity checks, lineage bound enforcement, and adversarial inputs.
 
 ## References
 

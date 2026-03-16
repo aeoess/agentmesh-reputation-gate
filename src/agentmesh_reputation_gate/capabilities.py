@@ -7,21 +7,32 @@ Rules from the ADR:
   - Namespace wildcards: "read:*" covers "read:data" but NOT "read:data:sensitive"
   - Recursive wildcards: "read:**" covers any depth
   - No implicit inheritance: "admin:*" does NOT imply "read:*"
-  - Deny precedence: explicit deny overrides any allow
+  - Intersection always produces the narrower bound
 """
 
 from __future__ import annotations
 
 
-def _is_valid_capability(cap: str) -> bool:
+def _is_wildcard(cap: str) -> bool:
+    """Check if a capability string is a wildcard pattern."""
+    return cap.endswith(":*") or cap.endswith(":**")
+
+
+def _narrower_pattern(a: str, b: str) -> str:
     """
-    Validate capability format: must be namespace:action with no empty segments.
-    Wildcards (read:*, read:**) are valid patterns but bare * or empty string are not.
+    Return the narrower of two same-namespace patterns.
+    Ordering (narrowest to broadest): concrete < :* < :**
     """
-    if not cap or ":" not in cap:
-        return False
-    parts = cap.split(":", 1)
-    return len(parts[0]) > 0 and len(parts[1]) > 0
+    if not _is_wildcard(a):
+        return a
+    if not _is_wildcard(b):
+        return b
+    # Both wildcards: single-level (*) is narrower than recursive (**)
+    if a.endswith(":**") and b.endswith(":*"):
+        return b
+    if b.endswith(":**") and a.endswith(":*"):
+        return a
+    return a  # Same wildcard type
 
 
 def capability_matches(pattern: str, capability: str) -> bool:
@@ -40,7 +51,6 @@ def capability_matches(pattern: str, capability: str) -> bool:
     if not pattern or not capability:
         return False
     if ":" not in pattern or ":" not in capability:
-        # Bare wildcards like "*" and bare tokens like "admin" are not valid
         return False
     # Reject empty namespace or empty action (":foo", "foo:", ":")
     p_ns, _, p_rest = pattern.partition(":")
@@ -52,17 +62,16 @@ def capability_matches(pattern: str, capability: str) -> bool:
 
     # Recursive wildcard: "read:**" matches any depth
     if pattern.endswith(":**"):
-        prefix = pattern[:-3]  # "read"
+        prefix = pattern[:-3]
         return capability.startswith(prefix + ":")
 
     # Single-level wildcard: "read:*" matches "read:X" but not "read:X:Y"
     if pattern.endswith(":*"):
-        prefix = pattern[:-2]  # "read"
+        prefix = pattern[:-2]
         rest = capability[len(prefix):]
-        # Must start with ":" and have exactly one more segment
         if not rest.startswith(":"):
             return False
-        remaining = rest[1:]  # strip the leading ":"
+        remaining = rest[1:]
         return ":" not in remaining and len(remaining) > 0
 
     return False
@@ -75,14 +84,24 @@ def intersect_capabilities(
     """
     Compute effective scope as intersection of delegation and tier capabilities.
 
-    A delegation capability is included if ANY tier pattern covers it.
-    Invariant 1: result is always a subset of delegation_caps.
+    Rules:
+      - Concrete delegation cap covered by tier pattern: keep concrete cap
+      - Wildcard delegation cap matched by tier pattern: keep the NARROWER of the two
+      - Result is deduplicated while preserving order
+
+    Invariant 1: result never exceeds delegation authority.
+    Invariant 2: result never exceeds tier authority.
     """
-    effective = []
+    effective: list[str] = []
+    seen: set[str] = set()
     for cap in delegation_caps:
         for pattern in tier_caps:
             if capability_matches(pattern, cap):
-                effective.append(cap)
+                # Critical: if delegation cap is a wildcard, narrow it
+                result = _narrower_pattern(cap, pattern) if _is_wildcard(cap) else cap
+                if result not in seen:
+                    seen.add(result)
+                    effective.append(result)
                 break
     return tuple(effective)
 
