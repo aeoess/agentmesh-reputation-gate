@@ -1,5 +1,7 @@
 # agentmesh-reputation-gate
 
+> Historical (2026-03). This adapter targeted an earlier AgentMesh interface and an earlier APS generation; it is kept as a record and is not maintained against current releases.
+
 Reputation-gated authority resolver for [AgentMesh](https://github.com/microsoft/agent-governance-toolkit). Implements the `AuthorityResolver` protocol from [microsoft/agent-governance-toolkit#275](https://github.com/microsoft/agent-governance-toolkit/issues/275).
 
 Composes AgentMesh's `TrustManager` scoring (0-1000) with delegation chains via component-wise monotonic narrowing: effective authority is the intersection of delegated capabilities and trust-tier permissions.
@@ -120,7 +122,7 @@ PYTHONPATH=src python3 -m pytest tests/ -v
 - [Reputation-Gated Authority ADR](https://github.com/microsoft/agent-governance-toolkit/blob/main/docs/proposals/reputation-gated-authority.md) (merged PR #274)
 - [AuthorityResolver interface](https://github.com/microsoft/agent-governance-toolkit/issues/275) (issue #275)
 - [Agent Passport System](https://github.com/aeoess/agent-passport-system) -- source implementation
-- [Monotonic Narrowing paper](https://doi.org/10.5281/zenodo.18749779)
+- [Monotonic Narrowing paper](https://doi.org/10.5281/zenodo.18932404)
 
 ## License
 
