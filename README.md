@@ -1,3 +1,5 @@
+> Archived 2026-09-02. See the historical note below.
+
 # agentmesh-reputation-gate
 
 > Historical (2026-03). This adapter targeted an earlier AgentMesh interface and an earlier APS generation; it is kept as a record and is not maintained against current releases.
